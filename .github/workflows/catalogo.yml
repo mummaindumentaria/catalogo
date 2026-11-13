@@ -1,0 +1,57 @@
+name: Actualizar catálogo
+
+on:
+  schedule:
+    # 6:12 de Buenos Aires (9:12 UTC). GitHub puede demorar el arranque unos minutos.
+    - cron: '12 9 * * *'
+  push:
+    # cuando se cambia el diseño o el sistema, se regenera el catálogo
+    branches: [main]
+    paths: ['kit/**', '.github/workflows/**']
+  workflow_dispatch:
+    inputs:
+      forzar:
+        description: 'Regenerar aunque no haya cambios en la tienda'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: catalogo
+  cancel-in-progress: false
+
+jobs:
+  catalogo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Preparar entorno
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq qpdf fonts-noto-color-emoji > /dev/null
+          pip install -q pillow pypdf
+          chmod +x kit/setup.sh && kit/setup.sh
+
+      - name: Leer la tienda y generar el catálogo
+        id: ci
+        run: python3 kit/ci.py ${{ (github.event_name == 'push' || github.event.inputs.forzar == 'true') && '--forzar' || '' }}
+
+      - name: Publicar en el link
+        if: steps.ci.outputs.cambio == 'true'
+        run: |
+          git config user.name "Mumma Catálogo"
+          git config user.email "mumma328@gmail.com"
+          # una sola versión en el repositorio: se reemplaza la historia para que no se acumulen PDFs viejos
+          git checkout --orphan nueva
+          git add -A
+          git commit -q -m "${{ steps.ci.outputs.resumen }}"
+          git push -f origin nueva:main

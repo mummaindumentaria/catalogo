@@ -1,0 +1,12 @@
+kit/out/
+kit/fonts/
+kit/img/cat/
+kit/img/th/
+kit/brand/cover_*.jpg
+kit/cat/crawl.json
+kit/cat/acc_subs.json
+kit/cat/rem_subs.json
+kit/cat/cambios.json
+kit/cat/new_ids.json
+kit/prev_snapshot.json
+__pycache__/
